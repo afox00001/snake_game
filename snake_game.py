@@ -1,8 +1,7 @@
 from time import sleep
-
 import numpy
 import pygame
-
+import sys
 
 def number_of_duplicates_in_iterable(list_object: iter) -> int:
     """Returns the number of elements in an iterable: "list_object" that are the same"""
@@ -148,7 +147,7 @@ class Game:
 
     def start_game(self) -> None:
         """Starts the game"""
-        while True:
+        while not self.player.close_game:
             self.player.handel_player_movement()
 
             "Check if player has died, if so: game over"
@@ -173,6 +172,8 @@ class Player:
         self.vertical_movement = 0
         self.horizontal_movement = 0
 
+        self.close_game = False
+
     def grow_player(self) -> None:
         """Grows the player. This is for when the player collects an apple"""
         self.player_body_segments.append([self.player_previous_position[0], self.player_previous_position[1]])
@@ -183,7 +184,10 @@ class Player:
         """Handel user (player) input"""
         events = pygame.event.get()
         for event in events:
-            if event.type == pygame.KEYUP:
+            # This allows the user to close the game
+            if event.type == pygame.QUIT:
+                self.close_game = True
+            elif event.type == pygame.KEYUP:
                 if event.key == pygame.K_w or event.key == pygame.K_UP:
                     self.vertical_movement = -1
                     self.horizontal_movement = 0
