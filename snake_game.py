@@ -3,34 +3,56 @@ import numpy
 import pygame
 import json
 
+
+class KeyEvent:
+    def __init__(self, key_event):
+        self.key = key_event
+
+    def is_up_key(self):
+        return self.key == pygame.K_w or self.key == pygame.K_UP
+
+    def is_down_key(self):
+        return self.key == pygame.K_s or self.key == pygame.K_DOWN
+
+    def is_left_key(self):
+        return self.key == pygame.K_a or self.key == pygame.K_LEFT
+
+    def is_right_key(self):
+        return self.key == pygame.K_d or self.key == pygame.K_RIGHT
+
+
 class HighScore:
     def __init__(self):
         self.high_score = 0
         self.high_score_file_path = "highscore.json"
-    def try_to_load_high_score_file(self):
+
+    def does_high_score_file_exist(self):
         try:
             open(self.high_score_file_path, "r")
             return True
         except FileNotFoundError:
-                with open(self.high_score_file_path, "w") as high_score_file:
-                    high_score_file.write("")
-                    high_score_json = {"High Score": 0}
-                    json.dump(high_score_json, high_score_file)
-                    return False
+            with open(self.high_score_file_path, "w") as high_score_file:
+                high_score_file.write("")
+                high_score_json = {"High Score": 0}
+                json.dump(high_score_json, high_score_file)
+                return False
+
     def get_high_score(self):
-        if self.try_to_load_high_score_file() == False:
-            return 0
-        with open(self.high_score_file_path, "r") as high_score_file:
-            return json.load(high_score_file)["High Score"]
+        if self.does_high_score_file_exist():
+            with open(self.high_score_file_path, "r") as high_score_file:
+                return json.load(high_score_file)["High Score"]
+        return 0
+
     def set_high_score(self, high_score):
         self.high_score = high_score
-        self.try_to_load_high_score_file()
+        self.does_high_score_file_exist()
         with open(self.high_score_file_path, "w") as high_score_file:
             new_high_score = {"High Score": high_score}
             json.dump(new_high_score, high_score_file)
 
+
 def number_of_duplicates_in_iterable(list_object: iter) -> int:
-    """Returns the number of elements in an iterable: "list_object" that are the same"""
+    """Returns the number of duplicate elements in an iterable: "list_object" """
     list_object.sort()
     duplicates = 0
     duplicates_high = 0
@@ -86,8 +108,6 @@ class Game:
 
         self.text_color = (255, 255, 255)
 
-        self.move_apple()
-
     def set_player_size(self, player_size: int) -> None:
         """Changes the size of the player, and the size of the grid and apple"""
         self.player_size = player_size
@@ -133,18 +153,71 @@ class Game:
             return True
         return False
 
-    def game_over(self) -> None:
-        is_new_high_score = False
-        if self.score >= self.high_score.get_high_score():
-            is_new_high_score = True
-            self.high_score.set_high_score(self.score)
-            display_message_on_screen(f"NEW HIGHSCORE: {self.high_score.get_high_score()}", self.screen, self.screen_width, self.screen_height, self.text_color)
+    def reset_game(self) -> None:
         self.score = 0
         self.player.player_body_segments = []
         self.player.main_player = [(self.screen_width // self.player_size) // 2,
                                    (self.screen_height // self.player_size) // 2]
-        if not is_new_high_score:
-            display_message_on_screen("YOU DIED", self.screen, self.screen_width, self.screen_height, self.text_color)
+
+    def is_score_new_high_score(self) -> bool:
+        return self.score >= self.high_score.get_high_score()
+
+    def display_new_high_score_message(self) -> None:
+        display_message_on_screen(f"NEW HIGHSCORE: {self.high_score.get_high_score()}", self.screen,
+                                  self.screen_width, self.screen_height, self.text_color)
+
+    def display_you_died_screen(self) -> None:
+        display_message_on_screen("YOU DIED", self.screen, self.screen_width, self.screen_height, self.text_color)
+
+    def game_over(self) -> None:
+        if self.is_score_new_high_score():
+            self.high_score.set_high_score(self.score)
+            self.display_new_high_score_message()
+        else:
+            self.display_you_died_screen()
+        self.reset_game()
+
+    def is_square_in_player_body(self, relative_x: int, relative_y: int):
+        return [relative_x, relative_y] in self.player.player_body_segments or [
+            relative_x, relative_y] == self.player.main_player
+
+    def draw_square_in_player_body(self, relative_x: int, relative_y: int) -> None:
+        pygame.draw.rect(self.screen, self.player_color,
+                         pygame.Rect(relative_x, relative_y, self.player_size, self.player_size))
+
+    def is_square_in_apple(self, relative_x: int, relative_y: int) -> bool:
+        return relative_x == self.apple_x and relative_y == self.apple_y
+
+    def draw_apple(self, relative_x: int, relative_y: int) -> None:
+        pygame.draw.rect(self.screen, self.apple_color,
+                         pygame.Rect(relative_x, relative_y, self.player_size, self.player_size))
+
+    def draw_background_square(self, relative_x: int, relative_y: int) -> None:
+        pygame.draw.rect(self.screen, self.background_color,
+                         pygame.Rect(relative_x, relative_y, self.player_size, self.player_size))
+
+    def draw_score_text(self) -> None:
+        font = pygame.font.Font(None, 36)
+        score_text = font.render(
+            f'High Score: {self.high_score.get_high_score()}'
+            f'{" " * (self.screen_width // self.player_size)}Score: {self.score}',
+            True,
+            (255, 255, 255))
+        self.screen.blit(score_text, (10, 10))
+
+    def did_player_beat_game(self) -> bool:
+        return self.player.get_player_length() >= self.screen_width * self.screen_height
+
+    def player_won_screen(self) -> None:
+        display_message_on_screen("YOU WON!!!", self.screen, self.screen_width, self.screen_height, self.text_color)
+        sleep(1)
+        pygame.display.flip()
+        if self.is_score_new_high_score():
+            self.high_score.set_high_score(self.score)
+            self.display_new_high_score_message()
+        else:
+            self.display_you_died_screen()
+        self.reset_game()
 
     def update_grid(self) -> None:
         """Updates the grid, and draws out the game on the screen"""
@@ -152,47 +225,37 @@ class Game:
         for x in range(0, self.screen_width, self.player_size):
             square_count_y_axis_pointer = 0
             for y in range(0, self.screen_height, self.player_size):
-                """Check if our current square we are rendering:
-                 [square_count_x_axis_pointer, square_count_y_axis_pointer] is either in the array of body segments
-                 or is equal to the players "head" (self.main_player)"""
-                if [square_count_x_axis_pointer, square_count_y_axis_pointer] in self.player.player_body_segments or [
-                        square_count_x_axis_pointer, square_count_y_axis_pointer] == self.player.main_player:
-                    "Draw snake body"
-                    pygame.draw.rect(self.screen, self.player_color,
-                                     pygame.Rect(x, y, self.player_size, self.player_size))
-                elif square_count_x_axis_pointer == self.apple_x and square_count_y_axis_pointer == self.apple_y:
-                    "Draw the apple"
-                    pygame.draw.rect(self.screen, self.apple_color,
-                                     pygame.Rect(x, y, self.player_size, self.player_size))
+                if self.is_square_in_player_body(square_count_x_axis_pointer, square_count_y_axis_pointer):
+                    self.draw_square_in_player_body(x, y)
+                elif self.is_square_in_apple(square_count_x_axis_pointer, square_count_y_axis_pointer):
+                    self.draw_apple(x, y)
                 else:
-                    "Draw the background"
-                    pygame.draw.rect(self.screen, self.background_color,
-                                     pygame.Rect(x, y, self.player_size, self.player_size))
+                    self.draw_background_square(x, y)
                 square_count_y_axis_pointer += 1
             square_count_x_axis_pointer += 1
 
         if self.score > self.high_score.get_high_score():
-            is_new_high_score = True
             self.high_score.set_high_score(self.score)
-        "Draw the score text"
-        font = pygame.font.Font(None, 36)
-        score_text = font.render(f'Score: {self.score}        High Score: {self.high_score.get_high_score()}', True, (255, 255, 255))
-        self.screen.blit(score_text, (10, 10))
-
+        self.draw_score_text()
         pygame.display.flip()
         sleep(0.03)
 
+    def is_player_touching_apple(self) -> bool:
+        return self.player.main_player == [self.apple_x, self.apple_y]
+
     def start_game(self) -> None:
         """Starts the game"""
+        self.move_apple()
         while not self.player.close_game:
             self.player.handel_player_movement()
 
-            "Check if player has died, if so: game over"
             if self.check_if_player_died():
                 self.game_over()
 
-            "Check if player is touching the apple, if so, collect the apple"
-            if self.player.main_player == [self.apple_x, self.apple_y]:
+            if self.did_player_beat_game():
+                self.player_won_screen()
+
+            if self.is_player_touching_apple():
                 self.collect_apple()
             self.update_grid()
 
@@ -211,39 +274,49 @@ class Player:
 
         self.close_game = False
 
+    def get_player_length(self) -> int:
+        return len(self.player_body_segments)
+
     def grow_player(self) -> None:
         """Grows the player. This is for when the player collects an apple"""
         self.player_body_segments.append([self.player_previous_position[0], self.player_previous_position[1]])
 
-    def handel_player_movement(self) -> None:
-        """Handles the player movement and user inputs"""
+    def move_up(self) -> None:
+        self.vertical_movement = -1
+        self.horizontal_movement = 0
 
+    def move_down(self) -> None:
+        self.vertical_movement = 1
+        self.horizontal_movement = 0
+
+    def move_left(self) -> None:
+        self.horizontal_movement = -1
+        self.vertical_movement = 0
+
+    def move_right(self) -> None:
+        self.horizontal_movement = 1
+        self.vertical_movement = 0
+
+    def update_player_movement_values(self) -> None:
         """Handel user (player) input"""
         events = pygame.event.get()
         for event in events:
-            # This allows the user to close the game
             if event.type == pygame.QUIT:
                 self.close_game = True
-            elif event.type == pygame.KEYUP:
-                if event.key == pygame.K_w or event.key == pygame.K_UP:
-                    self.vertical_movement = -1
-                    self.horizontal_movement = 0
-                elif event.key == pygame.K_s or event.key == pygame.K_DOWN:
-                    self.vertical_movement = 1
-                    self.horizontal_movement = 0
-                elif event.key == pygame.K_a or event.key == pygame.K_LEFT:
-                    self.horizontal_movement = -1
-                    self.vertical_movement = 0
-                elif event.key == pygame.K_d or event.key == pygame.K_RIGHT:
-                    self.horizontal_movement = 1
-                    self.vertical_movement = 0
+            elif event.type == pygame.KEYDOWN:
+                key = KeyEvent(event.key)
+                if key.is_up_key():
+                    self.move_up()
+                elif key.is_down_key():
+                    self.move_down()
+                elif key.is_left_key():
+                    self.move_left()
+                elif key.is_right_key():
+                    self.move_right()
 
-        """Check if player is not moving"""
-        if self.vertical_movement == 0 and self.horizontal_movement == 0:
-            return  # We are done here. No movement is needed
-
+    def stop_player_from_going_past_screen(self) -> None:
         """Make Sure The Player Is Not At The Edge Of The Screen. If Player Is At Edge Of Screen (or past the edge),
-        "Packman" The Player To The Opposite Edge Of The Screen"""
+                "Packman" The Player To The Opposite Edge Of The Screen"""
         number_of_squares_in_grid_height = self.screen_height // self.player_size
         number_of_squares_in_grid_width = self.screen_width // self.player_size
 
@@ -267,6 +340,7 @@ class Player:
         elif is_player_past_bottom_edge:
             self.main_player = bottom_edge_of_screen_coordinate_for_player
 
+    def update_player_position(self) -> None:
         """Move Player"""
         if self.horizontal_movement != 0:
             if self.horizontal_movement > 0:
@@ -279,9 +353,16 @@ class Player:
             else:
                 self.main_player[1] -= 1
 
-        """Move the players body segments to the next segment in the "chain", and moves the segment next to the 
+    def is_player_not_moving(self) -> bool:
+        return self.vertical_movement == 0 and self.horizontal_movement == 0
+
+    def has_player_grown_yet(self) -> bool:
+        return self.player_previous_position is None or len(self.player_body_segments) < 1
+
+    def update_players_body_segment_positions(self) -> None:
+        """Move the players body segments to the next segment in the "chain", and moves the segment next to the
         player head to the player heads previous position."""
-        if self.player_previous_position is None or len(self.player_body_segments) < 1:
+        if self.has_player_grown_yet():
             pass
         elif len(self.player_previous_position) == 1:
             self.player_body_segments[0] = [self.player_previous_position[0] + self.horizontal_movement,
@@ -300,6 +381,17 @@ class Player:
 
         """I am going to use a tuple here so I cannot accidentally change this values structure"""
         self.player_previous_position = self.main_player[0], self.main_player[1]
+
+    def handel_player_movement(self) -> None:
+        """Handles the player movement and user inputs"""
+        self.update_player_movement_values()
+        self.update_player_position()
+        self.stop_player_from_going_past_screen()
+
+        if self.is_player_not_moving():
+            return None  # We are done here. No movement is needed
+
+        self.update_players_body_segment_positions()
 
 
 if __name__ == "__main__":
