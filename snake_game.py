@@ -1,7 +1,33 @@
 from time import sleep
 import numpy
 import pygame
-import sys
+import json
+
+class HighScore:
+    def __init__(self):
+        self.high_score = 0
+        self.high_score_file_path = "highscore.json"
+    def try_to_load_high_score_file(self):
+        try:
+            open(self.high_score_file_path, "r")
+            return True
+        except FileNotFoundError:
+                with open(self.high_score_file_path, "w") as high_score_file:
+                    high_score_file.write("")
+                    high_score_json = {"High Score": 0}
+                    json.dump(high_score_json, high_score_file)
+                    return False
+    def get_high_score(self):
+        if self.try_to_load_high_score_file() == False:
+            return 0
+        with open(self.high_score_file_path, "r") as high_score_file:
+            return json.load(high_score_file)["High Score"]
+    def set_high_score(self, high_score):
+        self.high_score = high_score
+        self.try_to_load_high_score_file()
+        with open(self.high_score_file_path, "w") as high_score_file:
+            new_high_score = {"High Score": high_score}
+            json.dump(new_high_score, high_score_file)
 
 def number_of_duplicates_in_iterable(list_object: iter) -> int:
     """Returns the number of elements in an iterable: "list_object" that are the same"""
@@ -26,7 +52,7 @@ def text_objects(text: str, font, text_color) -> (any, any):
     return text_surface, text_surface.get_rect()
 
 
-def display_message_on_screen(text: str, screen, screen_width, screen_height, text_color) -> None:
+def display_message_on_screen(text: str, screen, screen_width, screen_height, text_color, display_length=2) -> None:
     """displays text on the screen"""
     large_text = pygame.font.Font('freesansbold.ttf', 115)
     text_surface, text_rectangle = text_objects(text, large_text, text_color)
@@ -34,7 +60,7 @@ def display_message_on_screen(text: str, screen, screen_width, screen_height, te
     screen.blit(text_surface, text_rectangle)
 
     pygame.display.update()
-    sleep(2)
+    sleep(display_length)
 
 
 class Game:
@@ -43,6 +69,8 @@ class Game:
         and apple_color can either be a string or in the same (R,G,B) format as the text color is in
         """
         pygame.init()
+
+        self.high_score = HighScore()
         self.player_size = 15
         self.screen = pygame.display.set_mode((1280, 720))
         self.screen_width, self.screen_height = self.screen.get_size()
@@ -71,7 +99,7 @@ class Game:
         number_of_squares_in_grid_height = self.screen_height // self.player_size
         number_of_squares_in_grid_width = self.screen_width // self.player_size
 
-        percentage_of_screen_we_can_spawn_apple = 0.80
+        percentage_of_screen_we_can_spawn_apple = 0.70
 
         """
         we are subtracting 1 from the percentage_of_screen_we_can_spawn_apple to get a 'border' that the random number
@@ -106,11 +134,17 @@ class Game:
         return False
 
     def game_over(self) -> None:
+        is_new_high_score = False
+        if self.score >= self.high_score.get_high_score():
+            is_new_high_score = True
+            self.high_score.set_high_score(self.score)
+            display_message_on_screen(f"NEW HIGHSCORE: {self.high_score.get_high_score()}", self.screen, self.screen_width, self.screen_height, self.text_color)
         self.score = 0
         self.player.player_body_segments = []
         self.player.main_player = [(self.screen_width // self.player_size) // 2,
                                    (self.screen_height // self.player_size) // 2]
-        display_message_on_screen("YOU DIED", self.screen, self.screen_width, self.screen_height, self.text_color)
+        if not is_new_high_score:
+            display_message_on_screen("YOU DIED", self.screen, self.screen_width, self.screen_height, self.text_color)
 
     def update_grid(self) -> None:
         """Updates the grid, and draws out the game on the screen"""
@@ -137,9 +171,12 @@ class Game:
                 square_count_y_axis_pointer += 1
             square_count_x_axis_pointer += 1
 
+        if self.score > self.high_score.get_high_score():
+            is_new_high_score = True
+            self.high_score.set_high_score(self.score)
         "Draw the score text"
         font = pygame.font.Font(None, 36)
-        score_text = font.render(f'Score: {self.score}', True, (255, 255, 255))
+        score_text = font.render(f'Score: {self.score}        High Score: {self.high_score.get_high_score()}', True, (255, 255, 255))
         self.screen.blit(score_text, (10, 10))
 
         pygame.display.flip()
