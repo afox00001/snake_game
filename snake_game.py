@@ -5,19 +5,19 @@ import json
 
 
 class KeyEvent:
-    def __init__(self, key_event):
+    def __init__(self, key_event: pygame.event):
         self.key = key_event
 
-    def is_up_key(self):
+    def is_up_key(self) -> bool:
         return self.key == pygame.K_w or self.key == pygame.K_UP
 
-    def is_down_key(self):
+    def is_down_key(self) -> bool:
         return self.key == pygame.K_s or self.key == pygame.K_DOWN
 
-    def is_left_key(self):
+    def is_left_key(self) -> bool:
         return self.key == pygame.K_a or self.key == pygame.K_LEFT
 
-    def is_right_key(self):
+    def is_right_key(self) -> bool:
         return self.key == pygame.K_d or self.key == pygame.K_RIGHT
 
 
