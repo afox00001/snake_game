@@ -101,6 +101,7 @@ class Game:
         self.score = 0
         self.apple_x = 0
         self.apple_y = 0
+        self.percentage_of_screen_we_can_spawn_apple = 0.70
 
         self.player_color = "red"
         self.background_color = "black"
@@ -119,7 +120,7 @@ class Game:
         number_of_squares_in_grid_height = self.screen_height // self.player_size
         number_of_squares_in_grid_width = self.screen_width // self.player_size
 
-        percentage_of_screen_we_can_spawn_apple = 0.70
+
 
         """
         we are subtracting 1 from the percentage_of_screen_we_can_spawn_apple to get a 'border' that the random number
@@ -127,13 +128,13 @@ class Game:
           spawn on the edge of the screen.
         """
         self.apple_x = numpy.random.randint(int(
-            number_of_squares_in_grid_width * (1 - percentage_of_screen_we_can_spawn_apple)),
+            number_of_squares_in_grid_width * (1 - self.percentage_of_screen_we_can_spawn_apple)),
             number_of_squares_in_grid_width - int(
-                number_of_squares_in_grid_width * (1 - percentage_of_screen_we_can_spawn_apple)))
+                number_of_squares_in_grid_width * (1 - self.percentage_of_screen_we_can_spawn_apple)))
         self.apple_y = numpy.random.randint(int(
-            number_of_squares_in_grid_height * (1 - percentage_of_screen_we_can_spawn_apple)),
+            number_of_squares_in_grid_height * (1 - self.percentage_of_screen_we_can_spawn_apple)),
             number_of_squares_in_grid_height - int(
-                number_of_squares_in_grid_height * (1 - percentage_of_screen_we_can_spawn_apple)))
+                number_of_squares_in_grid_height * (1 - self.percentage_of_screen_we_can_spawn_apple)))
 
     def collect_apple(self) -> None:
         """Increases the score, and grows the player"""
@@ -342,16 +343,34 @@ class Player:
 
     def update_player_position(self) -> None:
         """Move Player"""
-        if self.horizontal_movement != 0:
-            if self.horizontal_movement > 0:
-                self.main_player[0] += 1
+        is_player_moving_horizontally = self.horizontal_movement != 0
+        is_player_moving_vertically = self.vertical_movement != 0
+
+        is_player_moving_left = self.horizontal_movement > 0
+        is_player_moving_down = self.vertical_movement > 0
+
+        def move_player_left():
+            self.main_player[0] += 1
+
+        def move_player_right():
+            self.main_player[0] -= 1
+
+        def move_player_down():
+            self.main_player[1] += 1
+
+        def move_player_up():
+            self.main_player[1] -= 1
+
+        if is_player_moving_horizontally:
+            if is_player_moving_left > 0:
+                move_player_left()
             else:
-                self.main_player[0] -= 1
-        elif self.vertical_movement != 0:
-            if self.vertical_movement > 0:
-                self.main_player[1] += 1
+                move_player_right()
+        elif is_player_moving_vertically:
+            if is_player_moving_down:
+                move_player_down()
             else:
-                self.main_player[1] -= 1
+                move_player_up()
 
     def is_player_not_moving(self) -> bool:
         return self.vertical_movement == 0 and self.horizontal_movement == 0
